@@ -52,6 +52,7 @@ def main():
         default="a painting of a virus monster playing guitar",
         help="the prompt to render"
     )
+
     parser.add_argument(
         "--outdir",
         type=str,
@@ -59,37 +60,37 @@ def main():
         help="dir to write results to",
         default="outputs/txt2img-samples"
     )
+
     parser.add_argument(
         "--skip_grid",
         action='store_true',
         help="do not save a grid, only individual samples. Helpful when evaluating lots of samples",
     )
+
     parser.add_argument(
         "--skip_save",
         action='store_true',
-        help="do not save individual samples. For speed measurements.",
+        help="do not save indiviual samples. For speed measurements.",
     )
+
     parser.add_argument(
         "--ddim_steps",
         type=int,
         default=50,
         help="number of ddim sampling steps",
     )
+
     parser.add_argument(
         "--plms",
         action='store_true',
         help="use plms sampling",
     )
     parser.add_argument(
-        "--laion400m",
-        action='store_true',
-        help="uses the LAION400M model",
-    )
-    parser.add_argument(
         "--fixed_code",
         action='store_true',
-        help="if enabled, uses the same starting code across samples ",
+        help="if enabled, uses the same starting code across all samples ",
     )
+
     parser.add_argument(
         "--ddim_eta",
         type=float,
@@ -99,21 +100,24 @@ def main():
     parser.add_argument(
         "--n_iter",
         type=int,
-        default=2,
+        default=1,
         help="sample this often",
     )
+
     parser.add_argument(
         "--H",
         type=int,
-        default=512,
+        default=256,
         help="image height, in pixel space",
     )
+
     parser.add_argument(
         "--W",
         type=int,
-        default=512,
+        default=256,
         help="image width, in pixel space",
     )
+
     parser.add_argument(
         "--C",
         type=int,
@@ -124,25 +128,34 @@ def main():
         "--f",
         type=int,
         default=8,
-        help="downsampling factor",
+        help="downsampling factor, most often 8 or 16",
     )
+
     parser.add_argument(
         "--n_samples",
         type=int,
-        default=3,
-        help="how many samples to produce for each given prompt. A.k.a. batch size",
+        default=8,
+        help="how many samples to produce for each given prompt. A.k.a batch size",
     )
+
     parser.add_argument(
         "--n_rows",
         type=int,
         default=0,
         help="rows in the grid (default: n_samples)",
     )
+
     parser.add_argument(
         "--scale",
         type=float,
-        default=7.5,
+        default=5.0,
         help="unconditional guidance scale: eps = eps(x, empty) + scale * (eps(x, cond) - eps(x, empty))",
+    )
+
+    parser.add_argument(
+        "--dyn",
+        type=float,
+        help="dynamic thresholding from Imagen, in latent space (TODO: try in pixel space with intermediate decode)",
     )
     parser.add_argument(
         "--from-file",
@@ -152,13 +165,13 @@ def main():
     parser.add_argument(
         "--config",
         type=str,
-        default="configs/stable-diffusion/v1-inference.yaml",
+        default="configs/latent-diffusion/txt2img-1p4B-eval.yaml",
         help="path to config which constructs model",
     )
     parser.add_argument(
         "--ckpt",
         type=str,
-        default="models/ldm/stable-diffusion-v1/model.ckpt",
+        default="models/ldm/text2img-large/model.ckpt",
         help="path to checkpoint of model",
     )
     parser.add_argument(
@@ -175,13 +188,6 @@ def main():
         default="autocast"
     )
     opt = parser.parse_args()
-
-    if opt.laion400m:
-        print("Falling back to LAION 400M model...")
-        opt.config = "configs/latent-diffusion/txt2img-1p4B-eval.yaml"
-        opt.ckpt = "models/ldm/text2img-large/model.ckpt"
-        opt.outdir = "outputs/txt2img-samples-laion400m"
-
     seed_everything(opt.seed)
 
     config = OmegaConf.load(f"{opt.config}")
@@ -243,6 +249,7 @@ def main():
                                                          unconditional_guidance_scale=opt.scale,
                                                          unconditional_conditioning=uc,
                                                          eta=opt.ddim_eta,
+                                                         dynamic_threshold=opt.dyn,
                                                          x_T=start_code)
 
                         x_samples_ddim = model.decode_first_stage(samples_ddim)
@@ -254,9 +261,7 @@ def main():
                                 Image.fromarray(x_sample.astype(np.uint8)).save(
                                     os.path.join(sample_path, f"{base_count:05}.png"))
                                 base_count += 1
-
-                        if not opt.skip_grid:
-                            all_samples.append(x_samples_ddim)
+                        all_samples.append(x_samples_ddim)
 
                 if not opt.skip_grid:
                     # additionally, save as grid
@@ -272,6 +277,7 @@ def main():
                 toc = time.time()
 
     print(f"Your samples are ready and waiting for you here: \n{outpath} \n"
+          f"Sampling took {toc - tic}s, i.e. produced {opt.n_iter * opt.n_samples / (toc - tic):.2f} samples/sec."
           f" \nEnjoy.")
 
 
