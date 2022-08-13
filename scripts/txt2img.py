@@ -158,7 +158,7 @@ def main():
     parser.add_argument(
         "--ckpt",
         type=str,
-        default="models/ldm/stable-diffusion-v1/model.ckpt",
+        default="models/ldm/text2img-large/model.ckpt",
         help="path to checkpoint of model",
     )
     parser.add_argument(
