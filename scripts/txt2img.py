@@ -152,7 +152,7 @@ def main():
     parser.add_argument(
         "--config",
         type=str,
-        default="configs/stable-diffusion/v1-inference.yaml",
+        default="configs/latent-diffusion/txt2img-1p4B-eval.yaml",
         help="path to config which constructs model",
     )
     parser.add_argument(
